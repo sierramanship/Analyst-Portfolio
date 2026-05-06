@@ -1,0 +1,206 @@
+---
+title: "Analyst Portfolio"
+author: "Sierra Manship"
+date: "May 6, 2026"
+institute: "American University"
+format: pdf
+knitr: 
+  opts_chunk: 
+    echo: true
+    eval: true
+    prompt: false
+    tidy: false
+    comment: NA
+    message: FALSE
+    warning: FALSE
+    fig.align: 'center'
+    cache: true
+---
+
+```{r}
+#| echo: false
+
+library(tidyverse)
+library(readxl)
+library(janitor)
+library(kableExtra)
+library(knitr)
+library(plotly)
+```
+
+
+## Polished/Revised Research from PS2
+
+For Problem Set 2, my original analysis was based on my examination was on trends in U.S. legal immigration using data from the Migration Policy Institute (MPI). The data set shows the number of individuals were granted Lawful Permanent Resident (LPR) status by regoin of origin from 1999 to 2023. 
+
+To better understand regional variation, I separated the data by world region and visualized each region separately using line plots. Each region showed a variation in patterns that I outlined in Problem Set 2, but for the purposes of this portfolio, I will make the data shine by polishing the original research product. 
+
+
+```{r}
+#| echo: false
+
+immigrationstats <- read_excel("~/Downloads/Analyst Portfolio/regionalimmigrationstats1.xlsx")
+
+immigration <-
+  immigrationstats %>%
+  pivot_longer(
+    cols = c(Africa, Americas, Asia, Europe, Oceania, Unknown),
+    names_to = "Region",
+    values_to = "Region_Total"
+  )
+```
+
+
+Next, we need to polish the visuals. Instead of keeping the original visuals, I produced two different visuals to look at what immigration looks like in the US. Plot 1 shows which regions are growing the fastest with immigration by showing relative change over time. Plot 2 shows the overall composition of immigration over time.
+
+
+```{r}
+imm_indexed <-
+  immigration %>%
+  group_by(Region) %>%
+  mutate(index = (`Region_Total` / first(`Region_Total`)) * 100)
+
+plot1<-
+  imm_indexed %>%
+  ggplot(aes(x = Year, y = index, color = Region)) +
+  geom_line(linewidth = 1) +
+  labs(
+    title = "Relative Growth in U.S. Immigration by Region",
+    subtitle = "Indexed to 1999 = 100", 
+    x = "Year",
+    y = "Index (1999 = 100",
+    color = "Region",
+    caption = "Source: Migration Policy Institute"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+plot1
+
+imm_share <-
+  immigration %>%
+  group_by (Year) %>%
+  mutate(share = Region_Total / sum(Region_Total, na.rm = TRUE))
+
+plot2 <-
+  imm_share %>%
+  ggplot(aes(x = Year, y = share, fill = Region)) +
+  geom_area() + 
+  labs(
+    title = "Regional Composition of U.S. Immigration", 
+    subtitle = "Share of Total LPR Admissions",
+    x = "Year",
+    y = "Region",
+    fill = "Region",
+    caption = "Source: Migration Policy Institute"
+  ) +
+  theme_minimal()
+
+plot2
+```
+
+
+## Polished/Revised Research from PS4
+
+For Problem Set 4, I examined the central question many people are asking: How does war affect inflation? Using cross-national data, I analyzed whether countries experiencing conflict face systematically higher and more unpredictable inflation rates. I combined conflict data from the Uppsala Conflict Data Program (UCDP) with inflation data from the World Bank. The results show a strong and consistent relationship: countries experiencing conflict tend to have significantly higher and more unstable inflation rates.  
+
+To evaluate the relationship between conflict and inflation, I combined the data sets and constructed a binary variable (war) equal to 1 if a country experienced any conflict in a given year and 0 otherwise. 
+
+
+```{r}
+#| echo: false
+
+conflict <- read_csv("conflictdata.csv")
+inflation <- read_excel("inflationdata.xlsx")
+
+conflict <- conflict %>% clean_names()
+inflation <- inflation %>% clean_names()
+
+conflict <- conflict %>%
+  rename(country = location)
+
+inflation <- inflation %>%
+  rename(country = country,
+         year = year,
+         inflation = inflation)
+
+conflict <- conflict %>%
+  filter(!str_detect(country, ","))
+
+conflict <- conflict %>%
+  mutate(country = recode(country,
+                          "Myanmar (Burma)" = "Myanmar",
+                          "Russia (Soviet Union)" = "Russia",
+                          "Yemen (North Yemen)" = "Yemen",
+                          "Yemen (South Yemen)" = "Yemen",
+                          "Iran (Persia)" = "Iran"
+  ))
+
+conflict <- conflict %>%
+  filter(country %in% inflation$country)
+
+conflict2 <- conflict %>%
+   group_by(country, year) %>%
+   summarize(war = max(intensity_level > 0), .groups = "drop")
+
+conflict_inflation <- left_join(inflation, conflict2,
+                                by = c("country", "year"))
+
+conflict_inflation <- conflict_inflation %>%
+  mutate(war = ifelse(is.na(war), 0, war))
+```
+
+
+Next, I included a polished version of the visuals from the original problem set. Cross-sectional comparisons show that inflation is higher during conflict periods, but they do not capture how inflation behaves over time. To address this, I examined global inflation trends across the years. 
+
+I also included a table from the original assignment that shows countries, on average, experience more than double the inflation rates when they are experiencing conflict.
+
+
+```{r}
+sum_conflict <- conflict_inflation %>%
+  group_by(war) %>%
+  summarise(
+    mean_inflation = mean(inflation, na.rm = TRUE),
+    sd_inflation = sd(inflation, na.rm = TRUE),
+    observations = n()
+  )
+
+conflict_tbl <- sum_conflict %>%
+  mutate(
+    war = ifelse(war == 1, "War", "No War")
+  ) %>%
+  rename(
+    "Conflict Status" = war,
+    "Average Inflation" = mean_inflation,
+    "Standard Deviation" = sd_inflation,
+    "Observations" = observations
+  )
+
+conflict_tbl
+
+time_conflict <- conflict_inflation %>%
+  group_by(year) %>%
+  summarize(
+    avg_inflation = mean(inflation, na.rm = TRUE),
+    conflict_rate = mean(war, na.rm = TRUE)
+  )
+
+plot3 <-
+  time_conflict %>%
+  ggplot(aes(x = year, y = avg_inflation)) +
+  geom_line(linewidth = 1) +
+  labs(
+    title = "Global Inflation Over Time",
+    subtitle = "Average Inflation Across Countries by Year",
+    x = "Year",
+    y = "Average Inflation"
+  ) +
+  theme_minimal()
+
+plot3
+```
+
+
+This analysis shows that inflation is not only higher during individual conflict episodes, but also tends to rise during broader periods when conflict is more prevalent globally. Conflicts may contribute to wider economic instability across countries. This suggests that the relationship between war and inflation operates not only at the country level but also through broader global dynamics. Countries experiencing war face average inflation rates that are more than double those observed during peaceful periods. 
+
+
