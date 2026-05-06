@@ -6,6 +6,8 @@ The goal of this portfolio is to present clear, reproducible research that answe
 
 It also showcases updated and cleaned versions of previous project that I have done in my graduate data analysis course at American University.
 
+The edited versions of the research can be found in the `portfolio.pdf` file.
+
 
 ## Research Topics
 1. U.S. Immigration Trends by Region (1999-2023)
